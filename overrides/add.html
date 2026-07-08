@@ -1,0 +1,223 @@
+{% extends "main.html" %}
+{% block content %}
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Rubik:wght@400;600;900&display=swap');
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+.md-content__inner{padding:0!important}
+.md-content{background:transparent!important}
+
+#add-bg{position:fixed;inset:0;z-index:0;
+  background:url('../assets/background.png') center/cover no-repeat;
+  filter:brightness(0.45) blur(3px);transform:scale(1.05)}
+
+#add-wrap{position:relative;z-index:2;min-height:100vh;display:flex;
+  align-items:center;justify-content:center;padding:5rem 1rem 3rem;
+  font-family:'Rubik',sans-serif;direction:rtl}
+
+.add-card{
+  background:rgba(8,3,20,0.72);
+  backdrop-filter:blur(18px);
+  border:1px solid rgba(168,85,247,0.25);
+  border-radius:24px;
+  padding:2.4rem 2rem;
+  width:min(500px,96vw);
+  box-shadow:0 8px 40px rgba(168,85,247,0.2);
+}
+
+.add-card h2{
+  font-size:1.5rem;font-weight:900;
+  background:linear-gradient(90deg,#c4b5fd,#38bdf8);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+  background-clip:text;margin-bottom:1.6rem;text-align:center;
+}
+
+label{display:block;font-size:0.82rem;color:#94a3b8;margin-bottom:0.3rem;margin-top:1rem}
+
+select,input,textarea{
+  width:100%;background:rgba(255,255,255,0.06);
+  border:1px solid rgba(255,255,255,0.12);border-radius:10px;
+  color:#f1f5f9;font-family:'Rubik',sans-serif;font-size:0.95rem;
+  padding:0.65rem 0.9rem;outline:none;
+  transition:border-color 0.2s,box-shadow 0.2s;
+  direction:rtl;
+}
+select:focus,input:focus,textarea:focus{
+  border-color:rgba(168,85,247,0.55);
+  box-shadow:0 0 0 3px rgba(168,85,247,0.15);
+}
+select option{background:#1e0a3c;color:#f1f5f9}
+textarea{resize:vertical;min-height:120px;line-height:1.6}
+
+/* file upload */
+.file-zone{
+  margin-top:1rem;
+  border:2px dashed rgba(168,85,247,0.35);
+  border-radius:12px;padding:1.1rem 1rem;
+  text-align:center;cursor:pointer;
+  transition:border-color 0.2s,background 0.2s;
+  background:rgba(168,85,247,0.04);
+}
+.file-zone:hover,.file-zone.drag{
+  border-color:rgba(168,85,247,0.7);
+  background:rgba(168,85,247,0.10);
+}
+.file-zone-icon{font-size:1.6rem;line-height:1}
+.file-zone-text{font-size:0.85rem;color:#94a3b8;margin-top:0.4rem}
+.file-zone-name{
+  margin-top:0.5rem;font-size:0.82rem;color:#c4b5fd;
+  word-break:break-all;display:none;
+}
+.divider{
+  display:flex;align-items:center;gap:0.7rem;
+  margin:1.2rem 0 0;color:#475569;font-size:0.8rem;
+}
+.divider::before,.divider::after{
+  content:'';flex:1;height:1px;background:rgba(255,255,255,0.08);
+}
+
+.btn-submit{
+  margin-top:1.8rem;width:100%;padding:0.85rem;
+  background:linear-gradient(135deg,#7c3aed,#6366f1);
+  border:none;border-radius:12px;color:#fff;
+  font-family:'Rubik',sans-serif;font-size:1rem;font-weight:700;
+  cursor:pointer;transition:opacity 0.2s,transform 0.2s;
+  box-shadow:0 4px 20px rgba(99,102,241,0.4);
+}
+.btn-submit:hover{opacity:0.88;transform:translateY(-2px)}
+.btn-submit:disabled{opacity:0.5;cursor:not-allowed;transform:none}
+
+#msg{margin-top:1rem;text-align:center;font-size:0.9rem;min-height:1.4rem}
+.msg-ok{color:#6ee7b7}.msg-err{color:#fca5a5}
+
+.back-link{display:block;text-align:center;margin-top:1.2rem;
+  color:#a78bfa;font-size:0.85rem;text-decoration:none}
+.back-link:hover{color:#c4b5fd}
+
+.md-header{background:rgba(4,1,14,0.6)!important;backdrop-filter:blur(12px)!important;
+  border-bottom:1px solid rgba(168,85,247,0.2)!important}
+</style>
+
+<div id="add-bg"></div>
+<div id="add-wrap">
+  <div class="add-card">
+    <h2>✏️ הוסף מידע חדש</h2>
+
+    <label>סוג מידע</label>
+    <select id="cat">
+      <option value="הוראות-שעה">הוראות שעה</option>
+      <option value="הוראות-טעינה">הוראות טעינה</option>
+      <option value="דפי-מידע">דפי מידע</option>
+      <option value="כללי">כללי</option>
+    </select>
+
+    <label>כותרת</label>
+    <input id="ttl" type="text" placeholder="שם המסמך…"/>
+
+    <label>העלאת קובץ</label>
+    <input type="file" id="fileInput" accept="*/*" style="display:none" onchange="onFileChange(this)">
+    <div class="file-zone" id="fileZone" onclick="document.getElementById('fileInput').click()"
+         ondragover="event.preventDefault();this.classList.add('drag')"
+         ondragleave="this.classList.remove('drag')"
+         ondrop="event.preventDefault();this.classList.remove('drag');onFileChange({files:event.dataTransfer.files})">
+      <div class="file-zone-icon">📎</div>
+      <div class="file-zone-text">לחץ לבחירת קובץ או גרור לכאן</div>
+      <div class="file-zone-text" style="font-size:0.75rem;margin-top:2px;color:#64748b">כל סוגי הקבצים נתמכים</div>
+      <div class="file-zone-name" id="fileName"></div>
+    </div>
+
+    <div class="divider">או הקלד תוכן ישירות</div>
+
+    <label>תוכן</label>
+    <textarea id="cnt" placeholder="כתוב את המידע כאן…"></textarea>
+
+    <button class="btn-submit" id="submitBtn" onclick="submit()">שמור</button>
+    <div id="msg"></div>
+    <a class="back-link" href="/">← חזרה לדף הבית</a>
+  </div>
+</div>
+
+<script>
+const params = new URLSearchParams(location.search);
+if (params.get('cat')) document.getElementById('cat').value = params.get('cat');
+
+let selectedFile = null;
+
+function onFileChange(input) {
+  const file = input.files && input.files[0];
+  if (!file) return;
+  selectedFile = file;
+  const nameEl = document.getElementById('fileName');
+  nameEl.textContent = '📄 ' + file.name + ' (' + formatSize(file.size) + ')';
+  nameEl.style.display = 'block';
+  document.getElementById('fileZone').style.borderColor = 'rgba(168,85,247,0.8)';
+  // auto-fill title from filename (without extension)
+  const ttl = document.getElementById('ttl');
+  if (!ttl.value) ttl.value = file.name.replace(/\.[^.]+$/, '');
+}
+
+function formatSize(bytes) {
+  if (bytes < 1024) return bytes + ' B';
+  if (bytes < 1024*1024) return (bytes/1024).toFixed(1) + ' KB';
+  return (bytes/1024/1024).toFixed(1) + ' MB';
+}
+
+function readFileAsBase64(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      // result is "data:...;base64,XXXX" — strip the prefix
+      resolve(reader.result.split(',')[1]);
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+async function submit() {
+  const cat = document.getElementById('cat').value;
+  const ttl = document.getElementById('ttl').value.trim();
+  const cnt = document.getElementById('cnt').value.trim();
+  const btn = document.getElementById('submitBtn');
+
+  if (!ttl) { showMsg('יש למלא כותרת', false); return; }
+  if (!selectedFile && !cnt) { showMsg('יש להעלות קובץ או לכתוב תוכן', false); return; }
+
+  btn.disabled = true;
+  btn.textContent = 'שומר…';
+
+  try {
+    let payload;
+    if (selectedFile) {
+      const b64 = await readFileAsBase64(selectedFile);
+      payload = { category: cat, title: ttl, fileName: selectedFile.name, fileContent: b64 };
+    } else {
+      payload = { category: cat, title: ttl, content: cnt };
+    }
+
+    const res  = await fetch('/add', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) });
+    const data = await res.json();
+    if (data.ok) {
+      showMsg('✓ נשמר בהצלחה! האתר יתעדכן תוך כדקה', true);
+      document.getElementById('ttl').value = '';
+      document.getElementById('cnt').value = '';
+      selectedFile = null;
+      document.getElementById('fileName').style.display = 'none';
+      document.getElementById('fileZone').style.borderColor = '';
+      document.getElementById('fileInput').value = '';
+    } else {
+      showMsg('שגיאה: ' + (data.error || 'לא ידוע'), false);
+    }
+  } catch(e) {
+    showMsg('שגיאת רשת — נסה שוב', false);
+  }
+  btn.disabled = false;
+  btn.textContent = 'שמור';
+}
+
+function showMsg(text, ok) {
+  const el = document.getElementById('msg');
+  el.textContent = text;
+  el.className = ok ? 'msg-ok' : 'msg-err';
+}
+</script>
+{% endblock %}

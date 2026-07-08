@@ -1,0 +1,48 @@
+site_name: על הפטרייה
+site_description: מאגר הידע של אבסלום
+docs_dir: docs
+site_dir: site
+
+repo_url: https://github.com/ranzok-web/ABSOLEM
+repo_name: ABSOLEM
+edit_uri: edit/main/docs/
+
+copyright: MADE ONLY 4 THE 4
+
+theme:
+  name: material
+  custom_dir: overrides
+  language: he
+  direction: rtl
+  palette:
+    scheme: slate
+    primary: deep purple
+    accent: purple
+  font:
+    text: Rubik
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.top
+    - search.highlight
+    - search.suggest
+    - content.tooltips
+    - content.action.edit
+
+plugins:
+  - search:
+      lang: he
+
+extra_css:
+  - assets/rtl.css
+
+nav:
+  - בית: index.md
+  - הוראות שעה:
+    - הוראות-שעה/index.md
+  - הוראות טעינה:
+    - הוראות-טעינה/index.md
+  - דפי מידע:
+    - דפי-מידע/index.md
+  - כללי:
+    - כללי/index.md
