@@ -33,6 +33,9 @@ plugins:
   - search:
       lang: he
 
+markdown_extensions:
+  - attr_list
+
 extra_css:
   - assets/rtl.css
 
