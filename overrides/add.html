@@ -113,15 +113,15 @@ textarea{resize:vertical;min-height:120px;line-height:1.6}
     <label>כותרת</label>
     <input id="ttl" type="text" placeholder="שם המסמך…"/>
 
-    <label>העלאת קובץ</label>
-    <input type="file" id="fileInput" accept="*/*" style="display:none" onchange="onFileChange(this)">
+    <label>העלאת קבצים</label>
+    <input type="file" id="fileInput" accept="*/*" multiple style="display:none" onchange="onFileChange(this)">
     <div class="file-zone" id="fileZone" onclick="document.getElementById('fileInput').click()"
          ondragover="event.preventDefault();this.classList.add('drag')"
          ondragleave="this.classList.remove('drag')"
          ondrop="event.preventDefault();this.classList.remove('drag');onFileChange({files:event.dataTransfer.files})">
       <div class="file-zone-icon">📎</div>
-      <div class="file-zone-text">לחץ לבחירת קובץ או גרור לכאן</div>
-      <div class="file-zone-text" style="font-size:0.75rem;margin-top:2px;color:#64748b">כל סוגי הקבצים נתמכים</div>
+      <div class="file-zone-text">לחץ לבחירת קבצים או גרור לכאן</div>
+      <div class="file-zone-text" style="font-size:0.75rem;margin-top:2px;color:#64748b">ניתן לבחור מספר קבצים בו-זמנית</div>
       <div class="file-zone-name" id="fileName"></div>
     </div>
 
@@ -140,19 +140,24 @@ textarea{resize:vertical;min-height:120px;line-height:1.6}
 const params = new URLSearchParams(location.search);
 if (params.get('cat')) document.getElementById('cat').value = params.get('cat');
 
-let selectedFile = null;
+let selectedFiles = [];
 
 function onFileChange(input) {
-  const file = input.files && input.files[0];
-  if (!file) return;
-  selectedFile = file;
+  const files = input.files ? Array.from(input.files) : [];
+  if (!files.length) return;
+  selectedFiles = files;
   const nameEl = document.getElementById('fileName');
-  nameEl.textContent = '📄 ' + file.name + ' (' + formatSize(file.size) + ')';
+  if (files.length === 1) {
+    nameEl.textContent = '📄 ' + files[0].name + ' (' + formatSize(files[0].size) + ')';
+    const ttl = document.getElementById('ttl');
+    if (!ttl.value) ttl.value = files[0].name.replace(/\.[^.]+$/, '');
+  } else {
+    nameEl.innerHTML = files.map(f => '📄 ' + f.name + ' (' + formatSize(f.size) + ')').join('<br>');
+    document.getElementById('ttl').value = '';
+    document.getElementById('ttl').placeholder = 'ימולא אוטומטית מהקובץ';
+  }
   nameEl.style.display = 'block';
   document.getElementById('fileZone').style.borderColor = 'rgba(168,85,247,0.8)';
-  // auto-fill title from filename (without extension)
-  const ttl = document.getElementById('ttl');
-  if (!ttl.value) ttl.value = file.name.replace(/\.[^.]+$/, '');
 }
 
 function formatSize(bytes) {
@@ -179,34 +184,40 @@ async function submit() {
   const cnt = document.getElementById('cnt').value.trim();
   const btn = document.getElementById('submitBtn');
 
-  if (!ttl) { showMsg('יש למלא כותרת', false); return; }
-  if (!selectedFile && !cnt) { showMsg('יש להעלות קובץ או לכתוב תוכן', false); return; }
+  if (!selectedFiles.length && !cnt) { showMsg('יש להעלות קובץ או לכתוב תוכן', false); return; }
+  if (!selectedFiles.length && !ttl) { showMsg('יש למלא כותרת', false); return; }
 
   btn.disabled = true;
-  btn.textContent = 'שומר…';
 
   try {
-    let payload;
-    if (selectedFile) {
-      const b64 = await readFileAsBase64(selectedFile);
-      payload = { category: cat, title: ttl, fileName: selectedFile.name, fileContent: b64 };
+    if (selectedFiles.length) {
+      for (let i = 0; i < selectedFiles.length; i++) {
+        const file = selectedFiles[i];
+        btn.textContent = selectedFiles.length > 1 ? `שומר ${i+1}/${selectedFiles.length}…` : 'שומר…';
+        const b64 = await readFileAsBase64(file);
+        const fileTitle = selectedFiles.length === 1 && ttl ? ttl : file.name.replace(/\.[^.]+$/, '');
+        const res  = await fetch('/add', { method:'POST', headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({ category: cat, title: fileTitle, fileName: file.name, fileContent: b64 }) });
+        const data = await res.json();
+        if (!data.ok) { showMsg('שגיאה בקובץ ' + file.name + ': ' + (data.error || 'לא ידוע'), false); btn.disabled = false; btn.textContent = 'שמור'; return; }
+      }
+      showMsg('✓ ' + selectedFiles.length + (selectedFiles.length === 1 ? ' קובץ נשמר' : ' קבצים נשמרו') + ' בהצלחה! האתר יתעדכן תוך כדקה', true);
     } else {
-      payload = { category: cat, title: ttl, content: cnt };
+      btn.textContent = 'שומר…';
+      const res  = await fetch('/add', { method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ category: cat, title: ttl, content: cnt }) });
+      const data = await res.json();
+      if (!data.ok) { showMsg('שגיאה: ' + (data.error || 'לא ידוע'), false); btn.disabled = false; btn.textContent = 'שמור'; return; }
+      showMsg('✓ נשמר בהצלחה! האתר יתעדכן תוך כדקה', true);
     }
 
-    const res  = await fetch('/add', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) });
-    const data = await res.json();
-    if (data.ok) {
-      showMsg('✓ נשמר בהצלחה! האתר יתעדכן תוך כדקה', true);
-      document.getElementById('ttl').value = '';
-      document.getElementById('cnt').value = '';
-      selectedFile = null;
-      document.getElementById('fileName').style.display = 'none';
-      document.getElementById('fileZone').style.borderColor = '';
-      document.getElementById('fileInput').value = '';
-    } else {
-      showMsg('שגיאה: ' + (data.error || 'לא ידוע'), false);
-    }
+    document.getElementById('ttl').value = '';
+    document.getElementById('cnt').value = '';
+    document.getElementById('ttl').placeholder = 'שם המסמך…';
+    selectedFiles = [];
+    document.getElementById('fileName').style.display = 'none';
+    document.getElementById('fileZone').style.borderColor = '';
+    document.getElementById('fileInput').value = '';
   } catch(e) {
     showMsg('שגיאת רשת — נסה שוב', false);
   }
